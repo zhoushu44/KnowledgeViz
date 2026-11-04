@@ -1,0 +1,89 @@
+{
+  "name": "knowledge-viz",
+  "private": true,
+  "version": "1.0.0",
+  "description": "知识体系可视化平台 - 内置大模型生成 KSB-YAML，四视图（思维导图/矩阵/图谱/学习路线）离线桌面应用",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b --noEmit && vite build",
+    "build:web": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "start": "node scripts/launch.cjs",
+    "start:dev": "node -e \"const{spawn}=require('node:child_process'),http=require('node:http'),path=require('node:path');const vite=spawn(process.execPath,[path.join('node_modules','vite','bin','vite.js')],{stdio:'inherit'});let tries=0,launched=false;const launch=()=>{launched=true;const app=spawn(process.execPath,[path.join('scripts','launch.cjs'),'--dev'],{stdio:'inherit'});app.on('exit',(code)=>{vite.kill();process.exit(code||0)})};const ping=()=>{const req=http.get({host:'localhost',port:5173,path:'/',timeout:800},(res)=>{res.resume();req.destroy();launch()});req.on('timeout',()=>req.destroy());req.on('error',()=>{if(launched)return;if(++tries>120){console.error('vite not ready in 60s: http://localhost:5173');vite.kill();process.exit(1)}setTimeout(ping,500)})};ping();\"",
+    "debug": "node scripts/debug-launch.cjs",
+    "electron": "electron .",
+    "electron:dev": "pnpm start:dev",
+    "dist": "pnpm build && electron-builder --win",
+    "dist:dir": "pnpm build && electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "com.knowledgeviz.desktop",
+    "productName": "知识体系可视化平台",
+    "copyright": "Copyright © 2026 knowledge-viz",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "知识体系可视化平台",
+      "artifactName": "知识体系可视化平台-${version}-安装包.exe"
+    },
+    "portable": {
+      "artifactName": "知识体系可视化平台-${version}-便携版.exe"
+    }
+  },
+  "dependencies": {
+    "d3-force": "^3.0.0",
+    "d3-hierarchy": "^3.1.2",
+    "d3-shape": "^3.2.0",
+    "js-yaml": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-hierarchy": "^3.1.7",
+    "@types/d3-shape": "^3.1.6",
+    "@types/js-yaml": "^4.0.9",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "31.7.7",
+    "electron-builder": "26.0.12",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "electron"
+    ]
+  }
+}

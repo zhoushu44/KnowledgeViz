@@ -1,0 +1,66 @@
+/* 画布通用空态：绝对定位覆盖在画布容器上（容器需 position: relative） */
+.empty-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--bg-page);
+  cursor: default;
+}
+
+.empty-canvas-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-selected);
+  color: var(--brand);
+}
+
+.empty-canvas-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text-1);
+}
+
+.empty-canvas-hint {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+.empty-canvas-action {
+  height: 34px;
+  margin-top: 8px;
+  padding: 0 18px;
+  border-radius: var(--r-md);
+  background: var(--brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.16s ease;
+}
+
+.empty-canvas-action:hover {
+  background: var(--brand-hover);
+}
+
+.empty-canvas-action:active {
+  background: var(--brand-active);
+}
+
+.empty-canvas-action:focus-visible {
+  outline: 2px solid var(--brand-2);
+  outline-offset: 2px;
+}

@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-electron/
+release/
+.vite/
+*.tsbuildinfo
+
+# 运行产物 / 日志
+*.log
+artifacts/
+
+# 本地私密配置（密钥不进仓库）
+.env
+.env.local
+.env.*.local
+electron/net.local.cjs
+
+# 系统文件
+.DS_Store
+Thumbs.db

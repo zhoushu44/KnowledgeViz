@@ -1,0 +1,412 @@
+/* ============================================================
+ * 矩阵视图（PRD 4.9）—— 全部类名以 mxv- 前缀，避免污染全局
+ * ============================================================ */
+
+.mxv-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ---------------- 工具条 ---------------- */
+.mxv-toolbar {
+  flex: none;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.mxv-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.mxv-label {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.mxv-select {
+  height: 30px;
+  max-width: 148px;
+  padding: 0 26px 0 10px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-sm);
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a9099' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
+  font-size: 13px;
+  color: var(--text-1);
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  text-overflow: ellipsis;
+}
+
+.mxv-select:focus {
+  border-color: var(--brand);
+}
+
+.mxv-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.mxv-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.mxv-export:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+/* ---------------- 滚动容器 ---------------- */
+.mxv-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+  overscroll-behavior: contain;
+}
+
+.mxv-none {
+  padding: 48px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+/* ---------------- 表格骨架 ---------------- */
+.mxv-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+  table-layout: auto;
+}
+
+.mxv-table th,
+.mxv-table td {
+  box-sizing: border-box;
+}
+
+/* 表头 sticky top */
+.mxv-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fbfcfe;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: bottom;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* 左上角：行维度 \ 列维度 */
+.mxv-corner {
+  position: sticky !important;
+  left: 0;
+  top: 0;
+  z-index: 6 !important;
+  background: #f6f8fc !important;
+  color: var(--text-3) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  min-width: 168px;
+  max-width: 220px;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mxv-corner-sep {
+  color: var(--text-4);
+  margin: 0 4px;
+}
+
+.mxv-corner-dim {
+  color: var(--text-3);
+}
+
+/* 列头 */
+.mxv-colhead {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.mxv-colhead-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.mxv-colhead-btn:hover {
+  color: var(--brand);
+}
+
+.mxv-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  /* 数据里的 color 可能是很浅的底色（如 #EBF5FF），加一圈内描边保证始终可见 */
+  box-shadow: inset 0 0 0 1px rgba(31, 35, 41, 0.16);
+}
+
+.mxv-colhead-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.mxv-count {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-4);
+}
+
+.mxv-caret-sort {
+  flex: none;
+  font-size: 9px;
+  color: var(--brand);
+}
+
+/* ---------------- 行头 ---------------- */
+.mxv-rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 168px;
+  max-width: 220px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.14s ease;
+}
+
+.mxv-rowhead:hover,
+.mxv-rowhead:focus-visible {
+  background: #fafbfd;
+}
+
+.mxv-rowhead:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(49, 69, 128, 0.28);
+}
+
+.mxv-row-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  width: 100%;
+}
+
+/* 行头左侧 4px 竖条 */
+.mxv-rowbar {
+  flex: none;
+  width: 4px;
+  min-height: 15px;
+  align-self: stretch;
+  border-radius: 2px;
+  margin-top: 1px;
+}
+
+.mxv-rowlabel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-top: 1px;
+}
+
+.mxv-rowname {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mxv-rowcount {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-4);
+}
+
+.mxv-caret {
+  flex: none;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-4);
+  margin-top: 3px;
+  transition: transform 0.16s ease;
+}
+
+.mxv-caret.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.mxv-row.is-collapsed .mxv-rowhead {
+  background: #fcfdff;
+}
+
+.mxv-collapsed {
+  padding: 12px 14px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  background: #fcfdff;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+/* ---------------- 单元格 ---------------- */
+.mxv-cell {
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid #f4f6f9;
+  padding: 8px 10px;
+  min-width: 220px;
+  vertical-align: top;
+  transition: background 0.14s ease;
+}
+
+.mxv-cellbody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.mxv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: flex-start;
+}
+
+.mxv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 21px;
+  max-width: 100%;
+  padding: 0 6px;
+  border: 1px solid #e4e8f0;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-1);
+  text-align: left;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.mxv-chip:hover {
+  border-color: #c5cfe2;
+  background: #f2f6ff;
+}
+
+.mxv-chip.sel {
+  border-color: var(--brand);
+  background: #eef2fb;
+  box-shadow: 0 0 0 1px var(--brand) inset;
+}
+
+.mxv-chip.dim {
+  opacity: 0.22;
+  pointer-events: none;
+  cursor: default;
+}
+
+.mxv-chip:focus-visible {
+  outline: 2px solid rgba(49, 69, 128, 0.4);
+  outline-offset: 1px;
+}
+
+.mxv-chip-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.mxv-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+}
+
+.mxv-chip-stars {
+  flex: none;
+  font-size: 7.5px;
+  letter-spacing: -0.4px;
+  color: #f5a623;
+}
+
+.mxv-more {
+  align-self: center;
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.mxv-meta {
+  font-size: 11px;
+  color: #8a9099;
+  white-space: nowrap;
+}
+
+.mxv-empty {
+  font-size: 11px;
+  color: #8a9099;
+  padding: 2px 0;
+}
