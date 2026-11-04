@@ -8,6 +8,7 @@
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D4?logo=windows&logoColor=white)](#打包成-windows-exe)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Download](https://img.shields.io/badge/Download-Windows%20exe-2ea44f?logo=github)](https://github.com/zhoushu44/KnowledgeViz/releases/latest)
 
 **KnowledgeViz** 是一个把「领域知识」变成「可浏览结构」的桌面应用。填入领域名称 + 描述，内置大模型会产出 5 个 KSB-YAML 文件（领域骨架 / 维度 / 知识点 / 关系类型 / 学习场景），随后你可以用四种视图从不同角度把它读透、讲清、导出。
 
@@ -53,7 +54,7 @@ pnpm build
 pnpm start                      # 启动桌面版
 ```
 
-不想装 Node？直接下载 Release 里的 `知识体系可视化平台-1.0.0-便携版.exe`，双击即用。
+不想装 Node？直接下载 Release 里的 `KnowledgeViz-1.0.0-portable.exe`，双击即用。
 
 ## 环境要求
 
@@ -131,17 +132,33 @@ pnpm debug
 pnpm dist
 ```
 
-产物（`release/`）：
+产物（`release/`，本地文件名带中文，上传 GitHub Release 时改名为 ASCII）：
 
 | 文件 | 说明 |
 | --- | --- |
-| `知识体系可视化平台-1.0.0-安装包.exe` | NSIS 安装包，约 76 MB；可选安装目录、建桌面与开始菜单快捷方式，带卸载程序 |
-| `知识体系可视化平台-1.0.0-便携版.exe` | 单文件便携版，约 76 MB；双击即用，不写注册表、不需安装 |
+| `KnowledgeViz-1.0.0-setup.exe` | NSIS 安装包，约 76 MB；可选安装目录、建桌面与开始菜单快捷方式，带卸载程序（打包产物名为 `知识体系可视化平台-1.0.0-安装包.exe`） |
+| `KnowledgeViz-1.0.0-portable.exe` | 单文件便携版，约 76 MB；双击即用，不写注册表、不需安装（打包产物名为 `知识体系可视化平台-1.0.0-便携版.exe`） |
 | `win-unpacked/` | 解包目录，可直接运行 `知识体系可视化平台.exe`，用于排查打包问题 |
+
+### 下载
+
+| 版本 | 链接 |
+| --- | --- |
+| 安装版 | [KnowledgeViz-1.0.0-setup.exe](https://github.com/zhoushu44/KnowledgeViz/releases/download/v1.0.0/KnowledgeViz-1.0.0-setup.exe) |
+| 便携版 | [KnowledgeViz-1.0.0-portable.exe](https://github.com/zhoushu44/KnowledgeViz/releases/download/v1.0.0/KnowledgeViz-1.0.0-portable.exe) |
+
+SHA-256：
+
+```text
+KnowledgeViz-1.0.0-setup.exe     4466560cd9df3a1bfe7ef1e3275948dfde0612c48c282b611fbc1ee58fdeb039
+KnowledgeViz-1.0.0-portable.exe  2e81b582e2156499ae01051aaa7ef9dc8eef87c58a7e8f49da65b763d009b2a3
+```
 
 打包配置在 `package.json` 的 `build` 字段，图标为 `build/icon.ico`。`electron-builder` 已作为 devDependency 安装；国内网络下首次打包若卡在下载 Electron 二进制，可先设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`。
 
 > 安装版与便携版共用同一个用户数据目录 `%APPDATA%\knowledge-viz\projects`（由原 `name` 决定，与是否改名无关），因此两者看到的是同一批项目；换机器只需拷贝该目录。
+
+> Release 附件里没有放二进制到 git 仓库：exe 通过 `gh release upload` 之类的方式挂到 Release 下（GitHub 单文件上限 2 GB，本项目约 76 MB 无压力），仓库本体保持轻量。重新发版时把 `release/` 里两个 exe 用 ASCII 名上传即可。
 
 ## 目录结构
 
