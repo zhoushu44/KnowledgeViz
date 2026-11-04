@@ -94,6 +94,8 @@ export interface LearningContent {
   pitfalls?: string[];
   /** 延伸阅读 / 下一步 */
   further?: string[];
+  /** 生成时用到的联网依据（URL，最多 5 条） */
+  sources?: string[];
   /** 是否由 AI 补全 */
   source?: 'template' | 'ai' | 'manual';
   updatedAt?: string;

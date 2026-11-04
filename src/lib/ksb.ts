@@ -77,6 +77,7 @@ function normalizeNode(raw: any): KnowledgePoint {
           practice: raw.learning.practice ? str(raw.learning.practice) : undefined,
           pitfalls: asArray<string>(raw.learning.pitfalls).map(String),
           further: asArray<string>(raw.learning.further).map(String),
+          sources: asArray<string>(raw.learning.sources).map(String),
           source: raw.learning.source,
           updatedAt: raw.learning.updated_at ?? raw.learning.updatedAt,
         }
@@ -338,6 +339,7 @@ export function serializeProject(p: Project): Record<BundleName, string> {
           practice: n.learning.practice,
           pitfalls: n.learning.pitfalls,
           further: n.learning.further,
+          sources: n.learning.sources?.length ? n.learning.sources : undefined,
           source: n.learning.source,
           updated_at: n.learning.updatedAt,
         }

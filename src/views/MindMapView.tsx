@@ -103,11 +103,18 @@ export default function MindMapView({ project, idx, selectedId, onSelect, filter
     const out: LaidNode[] = [];
     const links: { from: string; to: string; color: string }[] = [];
 
+    // 列宽随最长节点自适应：图二那种「损失线索检测模块-系统1」比默认 176 宽得多
+    const nameWidth = (s: string) => [...s].reduce((a, ch) => a + (/[\u4e00-\u9fa5]/.test(ch) ? 11.5 : 6.4), 0);
+    const colW = Math.max(COL_W, Math.min(250, Math.max(...project.nodes.map((n) => nameWidth(n.name)), 80) + 34));
+
     const place = (n: KnowledgePoint, side: -1 | 1, x: number, yTop: number, depth: number) => {
       const h = heightOf(n);
       const b = idx.branchById.get(n.branch);
       const kids = kidsOf(n.id);
-      const w = Math.max(74, Math.min(COL_W - 30, n.name.length * 11.5 + (depth <= 1 ? 34 : 22)));
+      // 「损失线索检测模块-系统1」这类长名要留够宽度，否则文字会溢出下划线
+      // L1 是 12.5px 加粗、其余 11.5px 常规，中文字宽近似等于字号，英文按 0.58 倍
+      const textW = [...n.name].reduce((s, ch) => s + (/[\u4e00-\u9fa5]/.test(ch) ? (depth <= 1 ? 13.2 : 11.8) : (depth <= 1 ? 7.6 : 6.6)), 0);
+      const w = Math.max(64, Math.min(280, Math.ceil(textW) + (depth <= 1 ? 34 : 16)));
       out.push({
         id: n.id, name: n.name, x: x * side, y: yTop + h / 2, w, depth,
         color: b?.color ?? '#64748B',
@@ -120,7 +127,7 @@ export default function MindMapView({ project, idx, selectedId, onSelect, filter
       let cy = yTop;
       for (const k of kids) {
         links.push({ from: n.id, to: k.id, color: b?.color ?? '#64748B' });
-        place(k, side, x + COL_W, cy, depth + 1);
+        place(k, side, x + colW, cy, depth + 1);
         cy += heightOf(k) + GAP_Y;
       }
     };
@@ -140,7 +147,7 @@ export default function MindMapView({ project, idx, selectedId, onSelect, filter
     for (const k of left) {
       const b = idx.branchById.get(k.branch);
       links.push({ from: root.id, to: k.id, color: b?.color ?? '#64748B' });
-      place(k, -1, COL_W, y, 1);
+      place(k, -1, colW, y, 1);
       y += heightOf(k) + GAP_Y;
     }
 
@@ -148,7 +155,7 @@ export default function MindMapView({ project, idx, selectedId, onSelect, filter
     for (const k of right) {
       const b = idx.branchById.get(k.branch);
       links.push({ from: root.id, to: k.id, color: b?.color ?? '#64748B' });
-      place(k, 1, COL_W, y, 1);
+      place(k, 1, colW, y, 1);
       y += heightOf(k) + GAP_Y;
     }
 
@@ -283,41 +290,45 @@ export default function MindMapView({ project, idx, selectedId, onSelect, filter
             <g>
               {layout.nodes.map((n) => {
                 const isSel = selectedId === n.id;
+                // 左侧分支往左生长：节点右边缘对齐到 n.x；右侧从左边缘 n.x 开始
+                const leftEdge = n.isRoot ? n.x - n.w / 2 : n.side === -1 ? n.x - n.w : n.x;
                 if (n.isRoot) {
                   return (
-                    <g key={n.id} data-nid={n.id} className="mm-node" opacity={n.dim ? 0.12 : 1} transform={`translate(${-n.w / 2}, ${n.y - 21})`} onClick={(e) => { e.stopPropagation(); onSelect(n.id); }}>
-                      <rect width={n.w} height="42" rx="10" fill="url(#rootGrad)" />
+                    <g key={n.id} data-nid={n.id} className="mm-node" opacity={n.dim ? 0.12 : 1} transform={`translate(${leftEdge}, ${n.y - 21})`} onClick={(e) => { e.stopPropagation(); onSelect(n.id); }}>
+                      <rect width={n.w} height="42" rx="8" fill="#2F7FE0" />
                       <text x={n.w / 2} y="26" textAnchor="middle" className="mm-root-text">{n.name}</text>
                     </g>
                   );
                 }
-                const leftEdge = n.side === -1 ? -n.w : 0;
+                // L1：整段彩色实心胶囊（图二的「成本&损失通路」「奖赏通路」）
                 if (n.isL1) {
                   return (
-                    <g key={n.id} data-nid={n.id} className="mm-node" opacity={n.dim ? 0.12 : 1} transform={`translate(${n.x + leftEdge}, ${n.y - 13})`} onClick={(e) => { e.stopPropagation(); onSelect(n.id); }}>
-                      <rect width={n.w} height="26" rx="13" fill={n.color} opacity={isSel ? 1 : 0.94} />
-                      {isSel && <rect width={n.w} height="26" rx="13" fill="none" stroke="#1F2329" strokeWidth="1.6" />}
-                      <text x={n.w / 2} y="17.5" textAnchor="middle" className="mm-l1-text">{n.name}</text>
+                    <g key={n.id} data-nid={n.id} className="mm-node" opacity={n.dim ? 0.12 : 1} transform={`translate(${leftEdge}, ${n.y - 12})`} onClick={(e) => { e.stopPropagation(); onSelect(n.id); }}>
+                      <rect width={n.w} height="24" rx="6" fill={n.color} />
+                      {isSel && <rect width={n.w} height="24" rx="6" fill="none" stroke="#1F2329" strokeWidth="1.4" />}
+                      <text x={n.w / 2} y="16" textAnchor="middle" className="mm-l1-text">{n.name}</text>
                       {n.hasKids && (
-                        <g className="mm-toggle" transform={`translate(${n.side === -1 ? -6 : n.w + 6}, 0)`} onClick={(e) => { e.stopPropagation(); toggle(n.id); }}>
-                          <circle r="6.5" fill="#fff" stroke={n.color} strokeWidth="1.3" />
-                          <text y="3.2" textAnchor="middle" fontSize="9" fill={n.color} fontWeight="700">{n.collapsed ? '+' : '−'}</text>
+                        <g className="mm-toggle" transform={`translate(${n.side === -1 ? -7 : n.w + 7}, 0)`} onClick={(e) => { e.stopPropagation(); toggle(n.id); }}>
+                          <circle r="4.5" fill={n.color} />
+                          <text y="2.6" textAnchor="middle" fontSize="7.5" fill="#fff" fontWeight="700">{n.collapsed ? '+' : '−'}</text>
                         </g>
                       )}
                     </g>
                   );
                 }
+                // L2/L3/L4：无边框文字 + 左侧彩色竖线 + 下划线（图二的枝叶样式）
+                const ruleW = Math.max(10, n.w - 6);
                 return (
-                  <g key={n.id} data-nid={n.id} className="mm-node" opacity={n.dim ? 0.12 : 1} transform={`translate(${n.x + leftEdge}, ${n.y - 12})`} onClick={(e) => { e.stopPropagation(); onSelect(n.id); }}>
-                    <rect width={n.w} height="24" rx="5" fill="#fff" stroke={isSel ? n.color : '#E4E8F0'} strokeWidth={isSel ? 1.6 : 1} />
-                    <rect width="2.5" height="24" rx="1.2" fill={n.color} />
-                    <text x="8" y="16" className="mm-node-text">
-                      {n.name.length > 11 ? n.name.slice(0, 10) + '…' : n.name}
-                    </text>
+                  <g key={n.id} data-nid={n.id} className="mm-node" opacity={n.dim ? 0.12 : 1} transform={`translate(${leftEdge}, ${n.y - 11})`} onClick={(e) => { e.stopPropagation(); onSelect(n.id); }}>
+                    {/* 左侧竖线：颜色继承所属分支 */}
+                    <rect x="-7" width="2" height="22" rx="1" fill={n.color} opacity={isSel ? 1 : 0.85} />
+                    {/* 文字下划线：更深一档的分支色 */}
+                    <line x1="0" y1="21" x2={ruleW} y2="21" stroke={n.color} strokeWidth={isSel ? 1.6 : 1} opacity={isSel ? 0.95 : 0.55} strokeLinecap="round" />
+                    <text x="0" y="15" className={`mm-node-text${isSel ? ' sel' : ''}`}>{n.name}</text>
                     {n.hasKids && (
-                      <g className="mm-toggle" transform={`translate(${n.side === -1 ? -6 : n.w + 6}, 0)`} onClick={(e) => { e.stopPropagation(); toggle(n.id); }}>
-                        <circle r="5.5" fill="#fff" stroke="#CBD2DE" strokeWidth="1" />
-                        <text y="2.8" textAnchor="middle" fontSize="8" fill="#8A9099" fontWeight="700">{n.collapsed ? '+' : '−'}</text>
+                      <g className="mm-toggle" transform={`translate(${n.side === -1 ? -12 : ruleW + 6}, 0)`} onClick={(e) => { e.stopPropagation(); toggle(n.id); }}>
+                        <circle r="4.2" fill="#fff" stroke={n.color} strokeWidth="1" opacity="0.9" />
+                        <text y="2.4" textAnchor="middle" fontSize="7" fill={n.color} fontWeight="700">{n.collapsed ? '+' : '−'}</text>
                       </g>
                     )}
                   </g>

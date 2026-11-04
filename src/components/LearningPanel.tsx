@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KnowledgePoint, LearningContent, LearningSection, Project, ProjectIndex } from '../lib/types';
-import { aiLearning, learningToMarkdown, templateLearning } from '../lib/learning';
+import {
+  aiLearning, degenerateReason, learningToMarkdown, lintLearning, templateLearning,
+  type AiLearningResult, type LintResult,
+} from '../lib/learning';
 import { downloadText } from '../lib/ksb';
-import { IconBulb, IconCheck, IconEdit, IconRefresh, IconSparkle, IconDownload, IconPlus, IconTrash } from './Icons';
+import { desktop } from '../lib/desktop';
+import { IconBulb, IconCheck, IconEdit, IconRefresh, IconSparkle, IconDownload, IconPlus, IconTrash, IconAlert, IconLink } from './Icons';
 
 interface Props {
   project: Project;
@@ -12,9 +16,10 @@ interface Props {
 }
 
 /**
- * 「学习」标签页：
- *  - 没有内容时给一份本地结构化讲解（0 等待），可一键用 AI 重写得更具体
- *  - 全字段可编辑：目标 / 小节 / 练习 / 误区 / 延伸
+ * 「学习」标签页 v2
+ *  - 默认展示：内置体检单（0 等待），但明确标注「不是学习材料」，并给出质检分
+ *  - AI 重写：联网取证 → 硬约束生成 → 质检 → 不达标自动回炉一次
+ *  - 定义退化时给出「建议定义」，一键采纳，否则所有内容都建在空定义上
  */
 export default function LearningPanel({ project, idx, node, onSave }: Props) {
   const [editing, setEditing] = useState(false);
@@ -22,16 +27,24 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [savedAt, setSavedAt] = useState<string>('');
+  const [aiMeta, setAiMeta] = useState<{ rounds: number; ms: number; sources: string[] } | null>(null);
+  const [suggested, setSuggested] = useState<{ definition?: string; description?: string } | null>(null);
+  const [adopted, setAdopted] = useState(false);
   const autoGen = useRef<string>('');
 
   const all = useMemo(() => idx.byId as Map<string, KnowledgePoint>, [idx]);
   const content: LearningContent | null = draft ?? node.learning ?? null;
+  const deg = degenerateReason(node);
+  const lint: LintResult = useMemo(() => lintLearning(node, content), [node, content]);
 
   // 首次打开自动生成模板内容（不写盘，用户点保存才落盘）
   useEffect(() => {
     setEditing(false);
     setErr('');
     setDraft(null);
+    setAiMeta(null);
+    setSuggested(null);
+    setAdopted(false);
     if (!node.learning && autoGen.current !== node.id) {
       autoGen.current = node.id;
       setDraft(templateLearning(node, all));
@@ -57,6 +70,7 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
       practice: draft.practice?.trim() ? draft.practice : fallback.practice,
       pitfalls: draft.pitfalls?.length ? draft.pitfalls : fallback.pitfalls,
       further: draft.further?.length ? draft.further : fallback.further,
+      sources: draft.sources ?? [],
       source: draft.source === 'ai' ? 'ai' : 'manual',
       updatedAt: new Date().toISOString(),
     };
@@ -72,42 +86,64 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
   };
 
   const askAi = async () => {
+    if (busy) return;
     setBusy(true);
     setErr('');
+    setAiMeta(null);
+    setSuggested(null);
+    setAdopted(false);
     try {
-      const res = await aiLearning(node, project.name, all);
-      setDraft(res);
+      const res: AiLearningResult = await aiLearning(node, project.name, all);
+      setDraft(res.content);
+      setSuggested(res.suggested ?? null);
+      setAiMeta({ rounds: res.rounds, ms: res.elapsedMs, sources: res.sources });
       setEditing(true);
+      if (res.lint.score < 75) {
+        setErr(`生成结果质检 ${res.lint.score}/100（${res.lint.summary}），已${res.rounds ? '回炉一次' : '未能修复'}。可手动补具体机制与数字，或换个模型重试。`);
+      }
     } catch (e: any) {
-      setErr(`AI 生成较慢或不可用（${String(e?.message ?? e)}）。已打开编辑器并填入内置模板，可直接修改。`);
-      setDraft(templateLearning(node, all));
-      setEditing(true);
+      setErr(`AI 生成失败：${String(e?.message ?? e)}。可先看「体检单」，或手动补写。`);
     } finally {
       setBusy(false);
     }
   };
 
+  const adoptSuggestion = () => {
+    if (!suggested) return;
+    onSave({
+      ...(suggested.definition ? { definition: suggested.definition } : {}),
+      ...(suggested.description ? { description: suggested.description } : {}),
+    });
+    setAdopted(true);
+  };
+
   const exportMd = () => {
     if (!content) return;
-    downloadText(`${node.name}-学习内容.md`, learningToMarkdown(node, content), 'text/markdown');
+    downloadText(`${node.name}-学习内容.md`, learningToMarkdown(node, content, lint), 'text/markdown');
   };
 
   return (
     <div className="learn">
-      <div className="learn-bar">
-        <span className="learn-src">
-          {content?.source === 'ai' ? 'AI 生成' : content?.source === 'manual' ? '手动编辑' : '内置模板'}
-          {content?.updatedAt ? ` · ${new Date(content.updatedAt).toLocaleDateString('zh-CN')}` : ''}
+      {/* ---------- 质检条 ---------- */}
+      <div className={`learn-quality q-${lint.grade}`}>
+        <span className="learn-quality-score">{lint.score}</span>
+        <span className="learn-quality-body">
+          <span className="learn-quality-title">内容质检 · {lint.summary}</span>
+          <span className="learn-quality-src">
+            {content?.source === 'ai' ? 'AI 生成' : content?.source === 'manual' ? '手动编辑' : '内置体检单'}
+            {content?.updatedAt ? ` · ${new Date(content.updatedAt).toLocaleDateString('zh-CN')}` : ''}
+            {aiMeta ? ` · 耗时 ${Math.round(aiMeta.ms / 1000)}s${aiMeta.rounds ? ' · 已回炉 1 次' : ''}` : ''}
+          </span>
         </span>
         <span className="learn-actions">
           {!editing && (
             <>
               <button className="learn-btn" onClick={startEdit}><IconEdit size={13} /> 编辑</button>
-              <button className="learn-btn" onClick={() => void askAi()} disabled={busy}>
-                <IconSparkle size={13} /> {busy ? '生成中…' : 'AI 重写'}
+              <button className="learn-btn primary" onClick={() => void askAi()} disabled={busy}>
+                <IconSparkle size={13} /> {busy ? '联网生成中…' : 'AI 重写'}
               </button>
-              <button className="learn-btn" onClick={regenTemplate}><IconRefresh size={13} /> 模板</button>
-              <button className="learn-btn" onClick={exportMd}><IconDownload size={13} /> 导出</button>
+              <button className="learn-btn" onClick={regenTemplate} title="重新生成本地体检单"><IconRefresh size={13} /> 体检</button>
+              <button className="learn-btn" onClick={exportMd} disabled={!content}><IconDownload size={13} /> 导出</button>
             </>
           )}
           {editing && (
@@ -119,11 +155,53 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
         </span>
       </div>
 
+      {busy && (
+        <div className="learn-progress">
+          <IconRefresh size={12} /> 正在联网检索该主题的真实资料 → 生成 → 质检，约 20–60s
+        </div>
+      )}
+
       {savedAt && !editing && <div className="learn-saved"><IconCheck size={12} /> 已保存到项目（YAML） · {savedAt}</div>}
-      {err && <div className="learn-err">{err}</div>}
+      {err && <div className="learn-err"><IconAlert size={12} /> {err}</div>}
 
-      {!content && <div className="learn-empty">暂无学习内容，点「编辑」开始写，或点「AI 重写」让模型生成。</div>}
+      {/* ---------- 定义退化提示 ---------- */}
+      {deg && (
+        <div className="learn-defgap">
+          <div className="learn-defgap-head"><IconAlert size={12} /> 源头定义不达标：{deg}</div>
+          <div className="learn-defgap-body">
+            在这种情况下，任何「学习内容」都只能复述这句话。先补定义，再谈学习。
+          </div>
+          {suggested?.definition ? (
+            <div className="learn-suggest">
+              <div className="learn-suggest-label">建议定义</div>
+              <p className="learn-suggest-text">{suggested.definition}</p>
+              {suggested.description && <p className="learn-suggest-text muted">{suggested.description}</p>}
+              {adopted ? (
+                <div className="learn-saved"><IconCheck size={12} /> 已采纳，写入本节点</div>
+              ) : (
+                <button className="learn-btn primary" onClick={adoptSuggestion}><IconCheck size={12} /> 采纳并写入节点</button>
+              )}
+            </div>
+          ) : (
+            <div className="learn-defgap-body muted">点「AI 重写」会同时给出建议定义。</div>
+          )}
+        </div>
+      )}
 
+      {/* ---------- 模板横幅：明确它不是学习材料 ---------- */}
+      {content?.source === 'template' && (
+        <div className="learn-banner">
+          <IconBulb size={13} />
+          <span>
+            这是<strong>节点体检单</strong>，不是学习材料 —— 它只引用本节点真实内容并列出缺口，不含该领域知识。
+            点「AI 重写」才会联网取证并生成正文。
+          </span>
+        </div>
+      )}
+
+      {!content && <div className="learn-empty">暂无学习内容，点「编辑」开始写，或点「AI 重写」让模型联网生成。</div>}
+
+      {/* ---------- 只读 ---------- */}
       {content && !editing && (
         <div className="learn-read">
           {!!content.goals?.length && (
@@ -160,11 +238,49 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
               <ul className="learn-list">{content.further.map((p, i) => <li key={i}>{p}</li>)}</ul>
             </section>
           )}
+          {!!content.sources?.length && (
+            <section className="learn-sec">
+              <h4>📎 依据（联网取证）</h4>
+              <ul className="learn-list learn-sources">
+                {content.sources.map((u, i) => (
+                  <li key={i}>
+                    <a
+                      href={u}
+                      onClick={(e) => {
+                        if (desktop) {
+                          e.preventDefault();
+                          void desktop.openExternal(u);
+                        }
+                      }}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <IconLink size={11} /> {safeHost(u)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       )}
 
+      {/* ---------- 编辑 ---------- */}
       {content && editing && (
         <div className="learn-edit">
+          {!!lint.issues.length && (
+            <details className="learn-issues" open={lint.score < 75}>
+              <summary>质检发现 {lint.issues.length} 处问题（{lint.score}/100）</summary>
+              <ul>
+                {lint.issues.map((x, i) => (
+                  <li key={i} className={x.level === 'error' ? 'lv-error' : 'lv-warn'}>
+                    <b>{x.field}</b> · {x.text}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
           <label className="learn-label">学完能做到（每行一条）</label>
           <textarea
             className="learn-textarea"
@@ -205,19 +321,24 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
               </div>
               <textarea
                 className="learn-textarea"
-                rows={4}
+                rows={5}
                 value={s.body}
-                placeholder="先做什么、再做什么、怎么判断做对了"
+                placeholder="给机制、给数字、给步骤、给反例 —— 不要复述标题"
                 onChange={(e) => {
                   const next = [...(content.sections ?? [])];
                   next[i] = { ...next[i], body: e.target.value };
                   patch({ sections: next });
                 }}
               />
+              <div className="learn-sec-meta">
+                {s.body.trim().length} 字
+                {s.body.trim().length < 60 ? ' · 建议 ≥60' : ''}
+                {s.body.trim().length > 400 ? ' · 过长，建议 ≤400' : ''}
+              </div>
             </div>
           ))}
 
-          <label className="learn-label">动手练习</label>
+          <label className="learn-label">动手练习（要产出可检查的物件）</label>
           <textarea className="learn-textarea" rows={3} value={content.practice ?? ''} onChange={(e) => patch({ practice: e.target.value })} />
 
           <label className="learn-label">常见误区（每行一条）</label>
@@ -241,4 +362,12 @@ export default function LearningPanel({ project, idx, node, onSave }: Props) {
       )}
     </div>
   );
+}
+
+function safeHost(u: string): string {
+  try {
+    return new URL(u).hostname.replace(/^www\./, '');
+  } catch {
+    return u;
+  }
 }

@@ -84,6 +84,13 @@ export default function CreatePage() {
           },
         };
         addProject(p);
+        // 降级必须说清楚：否则用户拿到一套「基础理论/核心概念」的通用分支却以为是自己领域的拆解
+        if (res.degraded?.length) {
+          const why = res.degraded.map((d) => (d.stage === 'skeleton' ? '领域骨架' : '部分分支大纲') + '：' + d.reason).join('；');
+          window.alert(
+            `已生成，但未完全由模型完成\n\n${why}\n\n建议：检查「模型设置」里的接口是否可用后重新生成，或改用 YAML 导入。`
+          );
+        }
         push({ name: 'workspace', projectId: p.id });
         return;
       }

@@ -1804,6 +1804,77 @@
 .learn-sec-edit-head { display: flex; gap: 6px; align-items: center; }
 .learn-hint { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-4); margin-top: 4px; }
 
+/* ---- 学习内容质检条 ---- */
+.learn-quality {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 6px 8px; align-items: center;
+  padding: 8px 10px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--bg-subtle);
+}
+.learn-quality-score {
+  width: 40px; height: 36px; border-radius: var(--r-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+  background: #fff; border: 1px solid var(--line-control); color: var(--text-3);
+}
+.learn-quality-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.learn-quality-title { font-size: 12px; font-weight: 600; color: var(--text-1); }
+.learn-quality-src { font-size: 10.5px; color: var(--text-4); }
+/* 操作按钮独占一行：320px 右栏放不下「分数 + 4 个按钮」同一行 */
+.learn-quality .learn-actions { grid-column: 1 / -1; margin-left: 0; justify-content: flex-end; }
+.learn-quality.q-real { border-color: #cfe9d8; background: #f4fbf6; }
+.learn-quality.q-real .learn-quality-score { color: var(--success); border-color: #bfe3cc; }
+.learn-quality.q-thin { border-color: #f3e2bd; background: #fffcf3; }
+.learn-quality.q-thin .learn-quality-score { color: #b4820f; border-color: #eddcb4; }
+.learn-quality.q-filler { border-color: #f2d4d4; background: #fff7f7; }
+.learn-quality.q-filler .learn-quality-score { color: var(--danger); border-color: #eec6c6; }
+
+.learn-progress {
+  display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--brand-2);
+  background: #f4f7ff; border-radius: var(--r-sm); padding: 7px 9px;
+}
+.learn-progress svg { animation: learn-spin 1.1s linear infinite; }
+@keyframes learn-spin { to { transform: rotate(360deg); } }
+
+/* 模板横幅 */
+.learn-banner {
+  display: flex; gap: 7px; align-items: flex-start;
+  font-size: 11.5px; line-height: 1.7; color: #8a6a12;
+  background: #fffaeb; border: 1px solid #f5e6bd; border-radius: var(--r-sm);
+  padding: 8px 10px;
+}
+.learn-banner svg { flex: none; margin-top: 2px; }
+.learn-banner strong { color: #6b5210; }
+
+/* 定义退化提示 */
+.learn-defgap {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid #f2d4d4; background: #fff8f8; border-radius: var(--r-md);
+  padding: 9px 10px;
+}
+.learn-defgap-head { display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--danger); }
+.learn-defgap-body { font-size: 11.5px; line-height: 1.7; color: var(--text-2); }
+.learn-defgap-body.muted { color: var(--text-4); }
+.learn-defgap-body.muted a { color: var(--brand-2); }
+.learn-suggest {
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px;
+}
+.learn-suggest-label { font-size: 10.5px; color: var(--text-4); }
+.learn-suggest-text { margin: 0; font-size: 12.5px; line-height: 1.75; color: var(--text-1); }
+.learn-suggest-text.muted { color: var(--text-3); }
+
+/* 编辑态：质检问题清单 + 字数提示 */
+.learn-issues { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg-subtle); padding: 7px 9px; }
+.learn-issues summary { cursor: pointer; font-size: 11.5px; color: var(--text-2); font-weight: 600; }
+.learn-issues ul { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; line-height: 1.75; color: var(--text-2); }
+.learn-issues li.lv-error { color: var(--danger); }
+.learn-issues li.lv-warn { color: #8a6a12; }
+.learn-issues li b { font-weight: 600; }
+.learn-sec-meta { font-size: 10.5px; color: var(--text-4); text-align: right; margin-top: -2px; }
+.learn-sources a { display: inline-flex; align-items: center; gap: 4px; color: var(--brand-2); }
+.learn-sources a:hover { text-decoration: underline; }
+
+
 /* 5 个标签在 320px 右栏里要能一行放下 */
 .detail-tabs { gap: 0; overflow-x: auto; scrollbar-width: none; }
 .detail-tabs::-webkit-scrollbar { display: none; }

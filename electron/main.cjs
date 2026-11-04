@@ -49,7 +49,7 @@ function llmChat({ cfg, messages, requestId }) {
         model: cfg.model,
         messages,
         temperature: cfg.temperature ?? 0.3,
-        max_tokens: cfg.maxTokens ?? 8000,
+        max_tokens: cfg.maxTokens ?? 12000,
         stream: cfg.stream !== false,
         ...(cfg.extraBody ?? {}),
       }),
@@ -82,8 +82,22 @@ function llmChat({ cfg, messages, requestId }) {
           res.on('end', () => {
             try {
               const j = JSON.parse(raw);
-              const text = j.choices?.[0]?.message?.content ?? '';
+              const choice = j.choices?.[0];
+              const text = choice?.message?.content ?? '';
               if (text) win?.webContents.send('ksb:llmDelta', { requestId, delta: text });
+              // 思维链吃满 max_tokens 时 finish_reason=length 且 content 为空，
+              // 这种「成功但没内容」必须当成失败上报，否则上层只能静默回退到本地模板
+              if (!text) {
+                const think = choice?.message?.reasoning_content ? '（思维链占满了 token 预算）' : '';
+                finish({
+                  ok: false,
+                  error:
+                    choice?.finish_reason === 'length'
+                      ? `模型输出被截断：max_tokens=${cfg.maxTokens ?? 8000} 不够${think}`
+                      : `模型返回空内容${think}`,
+                });
+                return;
+              }
               finish({ ok: true, text });
             } catch (e) {
               finish({ ok: false, error: '响应解析失败：' + String(e?.message ?? e) });

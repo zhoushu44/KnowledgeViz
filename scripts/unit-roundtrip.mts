@@ -1,0 +1,11 @@
+import { parseBundle } from "../src/lib/ksb.ts";
+import { readFileSync } from "node:fs";
+const dir = "C:/Users/Administrator/AppData/Roaming/knowledge-viz/projects/营销神经学/";
+const files = {};
+for (const f of ['domain.yaml','dimensions.yaml','knowledge_points.yaml','relation_types.yaml','scenarios.yaml']) files[f] = readFileSync(dir+f,'utf8');
+const r = parseBundle(files, '营销神经学');
+console.log('ok=', r.ok, 'issues=', r.issues?.length, 'nodes=', r.project?.nodes.length);
+const n = r.project?.nodes.find(x => x.id === 'b1_l2_2');
+console.log('name=', n?.name);
+console.log('learning.source=', n?.learning?.source, 'goals=', n?.learning?.goals?.length, 'sections=', n?.learning?.sections?.length, 'sources=', n?.learning?.sources?.length, 'practiceLen=', n?.learning?.practice?.length);
+console.log('sec0 title=', n?.learning?.sections?.[0]?.title, 'bodyLen=', n?.learning?.sections?.[0]?.body?.length);

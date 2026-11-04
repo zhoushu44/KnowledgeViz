@@ -37,6 +37,12 @@ export interface GenerateResult {
   rawLength: number;
   /** 联网依据（挂到项目上，方便事后核对这份体系基于什么资料） */
   webEvidence?: { query: string; results: { title: string; url: string }[] }[];
+  /**
+   * 降级记录：骨架或大纲走的是本地模板而非模型时写入。
+   * 非空表示「这份体系不是模型按你的领域生成的结构」，必须在界面上明确告知用户，
+   * 否则用户会拿到一套「基础理论 / 核心概念 / 关键方法」的占位分支却以为是自己领域的拆解。
+   */
+  degraded?: { stage: 'skeleton' | 'outline'; reason: string }[];
 }
 
 const SYSTEM = `你是知识工程专家。严格按用户要求输出 YAML，代码块之外不要任何解释。
@@ -233,6 +239,10 @@ domain.yaml 要求：
 - description：60 字以内的领域定义
 - layers 固定 4 条：L1 核心理论基础 / L2 关键技术与方法 / L3 系统与工程 / L4 前沿与实战
 - branches 恰好 8 个，id 依次 b1…b8，每个给 name / name_en / color（从 ${PALETTE.join(' ')} 依次取）
+- **分支命名硬规则**：每个分支必须是该领域里真实可分析的维度/通路/分项，写成「分项名」或「分项名 + 符号」，
+  例如「成本&损失通路」「奖赏通路」「价值 V」「注意力 A」。
+  **严禁**使用「基础理论 / 核心概念 / 关键方法 / 技术体系 / 工程实践 / 工具与平台 / 治理与合规 / 前沿趋势」
+  这类通用占位词——它们不含任何领域信息，出现即视为不合格。
 
 dimensions.yaml 要求：
 - dim_stage：column，values = basic 基础入门 / core 核心进阶 / adv 高级前沿
@@ -268,16 +278,24 @@ function outlineMessages(input: GenerateInput, branches: any[], from: number, we
 分支列表：
 ${list}
 
+**命名硬规则（必须遵守，否则整份输出作废）**
+- L2 = 「机制名-系统归属」。机制名要具体到可观测的心理/业务机制，如「损失线索检测」「主观损失加权调制」；
+  系统归属只能取 系统1 / 系统2 / 双系统，如「损失线索检测模块-系统1」「主观损失加权调制模块-系统1」。
+- L3 = 具体的线索或操作，写成「变量/线索 + 怎么看或怎么做」，
+  如「金钱成本线索-看到价格、运费」「风险损失线索-看到差评、过敏提示」「锚定原价」「压缩选择集」。
+- **严禁**「XX基础 / XX核心概念 / XX总体框架 / XX实践 / XX实施方法 / XX度量与优化」这类空话命名，
+  也不要把分支名直接加后缀当子领域名。
+
 只输出 1 个 yaml 代码块，结构严格如下：
 \`\`\`yaml
 outline:
   - branch: b1
     l2:
-      - name: 二级子领域名
+      - name: 机制名-系统1
         name_en: Sub Domain
         def: 一句话定义（≤30字）
         l3:
-          - name: 三级方法名
+          - name: 变量/线索-怎么看
             name_en: Method
             def: 一句话定义（≤30字）
             desc: 展开说明（30-60字）
@@ -697,6 +715,7 @@ export async function generateProject(rawInput: GenerateInput, hooks: GenerateHo
     }
     if (attempt === 0) tick('repair', '骨架不完整，重试一次', 12);
   }
+  const degraded: { stage: 'skeleton' | 'outline'; reason: string }[] = [];
   if (!domain || !domainText || !dimsText || !relText) {
     // 模型不可用/超时：用本地骨架继续，保证「新建 → 出体系」链路永远可走通
     domain = localSkeleton(input);
@@ -705,6 +724,10 @@ export async function generateProject(rawInput: GenerateInput, hooks: GenerateHo
     dimsText = local.dimsYaml;
     relText = local.relYaml;
     lastIssues.push({ file: 'domain.yaml', message: '模型调用失败，已使用内置领域骨架模板' });
+    degraded.push({
+      stage: 'skeleton',
+      reason: lastIssues[lastIssues.length - 1]?.message ?? '模型未返回可用的领域骨架',
+    });
   }
 
   const branches: any[] = domain.branches.slice(0, 8).map((b: any, i: number) => ({
@@ -762,8 +785,10 @@ export async function generateProject(rawInput: GenerateInput, hooks: GenerateHo
   }
 
   // 缺失的分支用「分支名 + 通用子领域」补齐，保证仍能出图
+  const filledBranches: string[] = [];
   for (const b of branches) {
     if (!outlines.some((o) => o.branch === b.id)) {
+      filledBranches.push(b.name);
       outlines.push({
         branch: b.id,
         l2: [
@@ -823,6 +848,12 @@ export async function generateProject(rawInput: GenerateInput, hooks: GenerateHo
   }
 
   // ---------- ③ 本地展开 + 校验 ----------
+  if (filledBranches.length) {
+    degraded.push({
+      stage: 'outline',
+      reason: `以下分支的大纲未生成，已用「分支名 + 通用子领域」补齐：${filledBranches.join('、')}`,
+    });
+  }
   tick('relation', '正在组装节点与关系网络', 78);
   const project = expandProject(input, domain, outlines);
 
@@ -838,7 +869,6 @@ export async function generateProject(rawInput: GenerateInput, hooks: GenerateHo
   const res = parseBundle(files, input.name, { loose: true });
   // 大纲缺组已用本地通用模板补齐，属可接受降级：只有硬校验失败才中断
   if (res.issues.length) return { ok: false, issues: res.issues, rounds: 1, rawLength, webEvidence };
-  void lastIssues;
 
   return {
     ok: true,
@@ -847,5 +877,6 @@ export async function generateProject(rawInput: GenerateInput, hooks: GenerateHo
     rounds: 1,
     rawLength,
     webEvidence,
+    degraded: degraded.length ? degraded : undefined,
   };
 }

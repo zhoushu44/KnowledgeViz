@@ -19,6 +19,21 @@ export interface LlmConfig {
 }
 
 /**
+ * 关闭思维链。
+ *
+ * 各家 OpenAI 兼容实现的开关不一样，实测（2026-11-04，deepseek-v4-flash 网关）：
+ *   · chat_template_kwargs.enable_thinking = false → **不生效**，照样花 1100–2000 token 思考，
+ *     而且思考会挤占 max_tokens，一旦吃满就 finish_reason=length 且 content 为空，
+ *     上层判定失败后回退到本地模板（这是「生成出来全是基础理论/核心概念」的真正原因）。
+ *   · thinking = { type: 'disabled' } → 生效，reasoning 归零，同样结果快一倍。
+ * 因此两个都发，并额外带 enable_thinking，兼容不同后端；不认识该字段的实现会忽略。
+ */
+export const NO_THINKING = {
+  thinking: { type: 'disabled' as const },
+  enable_thinking: false,
+  chat_template_kwargs: { enable_thinking: false },
+};
+/**
  * 默认模型配置。
  * 接口地址与 key 通过构建期环境变量注入（Vite 的 VITE_ 前缀），不写死在源码里：
  *   VITE_KSB_LLM_BASE_URL   如 https://your-gateway.example.com/v1
@@ -30,9 +45,9 @@ export const DEFAULT_LLM: LlmConfig = {
   apiKey: import.meta.env.VITE_KSB_LLM_API_KEY ?? '',
   model: import.meta.env.VITE_KSB_LLM_MODEL ?? 'deepseek-v4-flash',
   temperature: 0.3,
-  maxTokens: 4000,
+  maxTokens: 12000,
   // 关掉内置思维链：否则大量 token 花在 reasoning 上，正文容易被截断
-  extraBody: { chat_template_kwargs: { enable_thinking: false } },
+  extraBody: NO_THINKING,
   // 生成链路用非流式：代理对 SSE 的分块很慢，非流式整包返回反而更快
   stream: false,
   // 代理会丢弃 system 消息，必须折叠进 user
